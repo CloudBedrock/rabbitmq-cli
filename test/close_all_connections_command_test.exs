@@ -25,7 +25,7 @@ defmodule CloseAllConnectionsCommandTest do
   @command RabbitMQ.CLI.Ctl.Commands.CloseAllConnectionsCommand
 
   @vhost "/"
-  
+
   setup_all do
     RabbitMQ.CLI.Core.Distribution.start()
     :net_kernel.connect_node(get_rabbit_hostname)
@@ -74,6 +74,7 @@ defmodule CloseAllConnectionsCommandTest do
   end
 
   test "run: a close connections request for a non-existing vhost does nothing", context do
+    close_all_connections(get_rabbit_hostname)
     with_connection(@vhost, fn(_) ->
       node = @helpers.parse_node(context[:node])
       nodes = @helpers.nodes_in_cluster(node)
