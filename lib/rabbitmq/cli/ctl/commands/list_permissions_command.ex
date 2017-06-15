@@ -20,9 +20,10 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListPermissionsCommand do
 
   def formatter(), do: RabbitMQ.CLI.Formatters.Table
 
+  def switches(), do: [all_vhosts: :boolean]
 
   def merge_defaults(args, opts) do
-    {args, Map.merge(%{vhost: "/"}, opts)}
+    {args, Map.merge(%{vhost: "/", all_vhosts: false}, opts)}
   end
 
   def scopes(), do: [:ctl, :diagnostics]
@@ -32,17 +33,28 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListPermissionsCommand do
   end
   def validate([], _), do: :ok
 
-  def run([], %{node: node_name, timeout: timeout, vhost: vhost}) do
-    :rabbit_misc.rpc_call(node_name,
-      :rabbit_auth_backend_internal,
-      :list_vhost_permissions,
-      [vhost],
-      timeout
-    )
+  def run([], %{node: node_name, timeout: timeout, vhost: vhost, all_vhosts: all_vhosts}) do
+    case all_vhosts do
+      true ->
+        :rabbit_misc.rpc_call(node_name,
+          :rabbit_auth_backend_internal,
+          :list_permissions,
+          [],
+          timeout
+        );
+      false ->
+        :rabbit_misc.rpc_call(node_name,
+          :rabbit_auth_backend_internal,
+          :list_vhost_permissions,
+          [vhost],
+          timeout
+        )
+    end
   end
 
   def usage, do: "list_permissions [-p <vhost>]"
 
+  def banner(_, %{all_vhosts: true}), do: "Listing permissions for all vhosts ..."
   def banner(_, %{vhost: vhost}), do: "Listing permissions for vhost \"#{vhost}\" ..."
 
 end

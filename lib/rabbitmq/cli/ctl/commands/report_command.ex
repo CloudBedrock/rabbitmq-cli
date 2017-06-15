@@ -38,6 +38,7 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ReportCommand do
   defp merge_run(command, args, opts) do
     {args, opts} = command.merge_defaults(args, opts)
     Stream.concat(banner_list(command.banner(args, opts)), command.run(args, opts))
+    # [banner_list(command.banner(args, opts)), command.run(args, opts)]
   end
 
   defp banner_list(banner) when is_list(banner) do

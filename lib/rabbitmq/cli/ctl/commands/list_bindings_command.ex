@@ -27,6 +27,8 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListBindingsCommand do
 
   def scopes(), do: [:ctl, :diagnostics]
 
+  def switches(), do: [all_vhosts: :boolean]
+
   def validate(args, _) do
       case InfoKeys.validate_info_keys(args, @info_keys) do
         {:ok, _} -> :ok
@@ -52,18 +54,22 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListBindingsCommand do
       Enum.join(@info_keys, ", ") <> "]."
   end
 
-  def run([_|_] = args, %{node: node_name, timeout: timeout, vhost: vhost}) do
+  def run([_|_] = args, %{node: node_name, timeout: timeout, vhost: vhost, all_vhosts: all_vhosts}) do
       info_keys = InfoKeys.prepare_info_keys(args)
-
-      RpcStream.receive_list_items(node_name, :rabbit_binding, :info_all,
-        [vhost, info_keys],
+      vhost_arg = case all_vhosts do
+        true  -> :all;
+        false -> vhost
+      end
+      RpcStream.receive_list_items(node_name, :rabbit_binding, :emit_info_all,
+        [vhost_arg, info_keys],
         timeout,
         info_keys)
   end
 
   defp default_opts() do
-      %{vhost: "/"}
+      %{vhost: "/", all_vhosts: false}
   end
 
-  def banner(_, %{vhost: vhost}), do: "Listing bindings for vhost #{vhost}..."
+  def banner(_, %{all_vhosts: true}), do: "Listing bindings for all vhosts ..."
+  def banner(_, %{vhost: vhost}), do: "Listing bindings for vhost #{vhost} ..."
 end

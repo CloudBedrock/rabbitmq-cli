@@ -27,6 +27,8 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListExchangesCommand do
 
   def scopes(), do: [:ctl, :diagnostics]
 
+  def switches(), do: [all_vhosts: :boolean]
+
   def validate(args, _) do
       case InfoKeys.validate_info_keys(args, @info_keys) do
         {:ok, _} -> :ok
@@ -39,7 +41,7 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListExchangesCommand do
   end
 
   def merge_defaults(args, opts) do
-    {args, Map.merge(%{vhost: "/"}, opts)}
+    {args, Map.merge(%{vhost: "/", all_vhosts: false}, opts)}
   end
 
   def usage() do
@@ -51,13 +53,18 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListExchangesCommand do
       Enum.join(@info_keys, ", ") <> "]."
   end
 
-  def run([_|_] = args, %{node: node_name, timeout: timeout, vhost: vhost}) do
+  def run([_|_] = args, %{node: node_name, timeout: timeout, vhost: vhost, all_vhosts: all_vhosts}) do
       info_keys = InfoKeys.prepare_info_keys(args)
-      RpcStream.receive_list_items(node_name, :rabbit_exchange, :info_all,
-        [vhost, info_keys],
+      vhost_arg = case all_vhosts do
+        true  -> :all;
+        false -> vhost
+      end
+      RpcStream.receive_list_items(node_name, :rabbit_exchange, :emit_info_all,
+        [vhost_arg, info_keys],
         timeout,
         info_keys)
   end
 
-  def banner(_,_), do: "Listing exchanges ..."
+  def banner(_,%{all_vhosts: true}), do: "Listing exchanges for all vhsots ..."
+  def banner(_,%{vhost: vhost}), do: "Listing exchanges for vhost '#{vhost}' ..."
 end

@@ -51,7 +51,12 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListQueuesCommand do
       merge_defaults(~w(name messages), opts)
   end
 
-  def switches(), do: [offline: :boolean, online: :boolean, local: :boolean]
+  def switches() do
+    [offline: :boolean,
+     online: :boolean,
+     local: :boolean,
+     all_vhosts: :boolean]
+  end
 
   def usage() do
       "list_queues [-p <vhost>] [--online] [--offline] [--local] [<queueinfoitem> ...]"
@@ -64,16 +69,21 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListQueuesCommand do
 
   def run([_|_] = args, %{node: node_name, timeout: timeout, vhost: vhost,
                           online: online_opt, offline: offline_opt,
-                          local: local_opt}) do
+                          local: local_opt,
+                          all_vhosts: all_vhosts}) do
       {online, offline} = case {online_opt, offline_opt} do
         {false, false} -> {true, true};
         other          -> other
       end
       info_keys = InfoKeys.prepare_info_keys(args)
+      vhost_arg = case all_vhosts do
+        true  -> :all;
+        false -> vhost
+      end
       Helpers.with_nodes_in_cluster(node_name, fn(nodes) ->
-        offline_mfa = {:rabbit_amqqueue, :emit_info_down, [vhost, info_keys]}
-        local_mfa = {:rabbit_amqqueue, :emit_info_local, [vhost, info_keys]}
-        online_mfa  = {:rabbit_amqqueue, :emit_info_all, [nodes, vhost, info_keys]}
+        offline_mfa = {:rabbit_amqqueue, :emit_info_down, [vhost_arg, info_keys]}
+        local_mfa = {:rabbit_amqqueue, :emit_info_local, [vhost_arg, info_keys]}
+        online_mfa  = {:rabbit_amqqueue, :emit_info_all, [nodes, vhost_arg, info_keys]}
         {chunks, mfas} = case {local_opt, offline, online} do
           # Local takes precedence
           {true, _, _}      -> {1, [local_mfa]};
@@ -86,8 +96,9 @@ defmodule RabbitMQ.CLI.Ctl.Commands.ListQueuesCommand do
   end
 
   defp default_opts() do
-    %{vhost: "/", offline: false, online: false, local: false}
+    %{vhost: "/", offline: false, online: false, local: false, all_vhosts: false}
   end
 
-  def banner(_,_), do: "Listing queues ..."
+  def banner(_,%{all_vhosts: true}), do: "Listing queues for all vhsots ..."
+  def banner(_,%{vhost: vhost}), do: "Listing queues for vhsot '#{vhost}' ..."
 end
